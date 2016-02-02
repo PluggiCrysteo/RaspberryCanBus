@@ -1,5 +1,5 @@
 // B.Stefanelli le 26 Oct 2011
-// changé pour fonctionner sur une rasp avec wiringPi par Paul Lesur (13/01/2015)
+
 
 #include "CanUtil.h"
 
@@ -7,9 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-//#include <Wire.h>
-//#include <Spi.h>
-//#include "WProgram.h"
 #include "MCP2510.h"
 
 
@@ -143,7 +140,7 @@ void CanUtil::setRxOperatingMode(uint8_t RRXmode, uint8_t rollover, uint8_t buff
 // 0 <= stdID <= 2047, 0 <= extID <= 262143, extended =  1 if filter applied to extended frames, 0 <= filter number <= 5
 // returns: nothing
 //****************************************************************
-void CanUtil::setAcceptanceFilter(unsigned int stdID, unsigned long extID, uint8_t extended, uint8_t filter){
+void CanUtil::setAcceptanceFilter(uint16_t stdID, uint32_t extID, uint8_t extended, uint8_t filter){
   int8_t sidh, sidl,eid8, eid0;
   sidh = (int8_t) stdID >>3;
   extended = extended <<3 & 0x08;
@@ -198,7 +195,7 @@ void CanUtil::setAcceptanceFilter(unsigned int stdID, unsigned long extID, uint8
 // 0 <= stdID <= 2047, 0 <= extID <= 262143, 0 <= buffer number <= 1
 // returns: nothing
 //****************************************************************
-void CanUtil::setAcceptanceMask(unsigned int stdID, unsigned long extID, uint8_t buffer){
+void CanUtil::setAcceptanceMask(uint16_t stdID, uint32_t extID, uint8_t buffer){
   int8_t sidh, sidl,eid8, eid0;
   sidh = stdID >>3;
   sidl = stdID << 5 & 0b11100000;
@@ -228,8 +225,8 @@ void CanUtil::setAcceptanceMask(unsigned int stdID, unsigned long extID, uint8_t
 // returns: frame type
 // frame type = (0: data frame received, 1: RTR received)
 //****************************************************************
-unsigned int CanUtil::isRtrFrame(uint8_t buffer){
-  unsigned int type = 0;
+uint8_t  CanUtil::isRtrFrame(uint8_t buffer){
+  uint8_t type = 0;
   switch (buffer) {
   case 0:
     type = _can.read(RXB0SIDL) >> 4;
@@ -248,8 +245,8 @@ unsigned int CanUtil::isRtrFrame(uint8_t buffer){
 // returns: frame type
 // frame type = (0: std frame received, 1: extended received)
 //****************************************************************
-unsigned int CanUtil::isExtendedFrame(uint8_t buffer){
-  unsigned int type = 0;
+uint8_t CanUtil::isExtendedFrame(uint8_t buffer){
+  uint8_t  type = 0;
   switch (buffer) {
   case 0:
     type = _can.read(RXB0SIDL) >> 3;
@@ -267,8 +264,8 @@ unsigned int CanUtil::isExtendedFrame(uint8_t buffer){
 //  0 <= buffer number <= 1
 // returns: standard ID
 //****************************************************************
-unsigned int CanUtil::whichStdID(uint8_t buffer){
-  unsigned int stdid = 0;
+uint16_t  CanUtil::whichStdID(uint8_t buffer){
+  uint8_t  stdid = 0;
   switch (buffer) {
   case 0:
     stdid = _can.read(RXB0SIDH) << 3;
@@ -289,8 +286,8 @@ unsigned int CanUtil::whichStdID(uint8_t buffer){
 //  0 <= buffer number <= 1
 // returns: extended ID
 //****************************************************************
-long CanUtil::whichExtdID(uint8_t buffer){
-  long extid = 0;
+uint32_t CanUtil::whichExtdID(uint8_t buffer){
+  uint32_t extid = 0;
   switch (buffer) {
   case 0:
     extid = (_can.read(RXB0SIDL) & 0x03) << 16;
@@ -374,7 +371,7 @@ void CanUtil::setTxnrtsPinMode(uint8_t b2rtsm, uint8_t b1rtsm, uint8_t b0rtsm){
 // 0 <= stdID <= 2047, 0 <= extID <= 262143, extended =  1 if filter transmission of extended identifiers, 0 <= buffer number <= 2
 // returns: nothing
 //****************************************************************
-void CanUtil::setTxBufferID(unsigned int stdID, unsigned long extID, uint8_t extended, uint8_t buffer){
+void CanUtil::setTxBufferID(uint16_t stdID, uint32_t extID, uint8_t extended, uint8_t buffer){
   int8_t sidh, sidl,eid8, eid0;
   sidh = stdID >>3;
   extended = extended <<3 & 0x08;
