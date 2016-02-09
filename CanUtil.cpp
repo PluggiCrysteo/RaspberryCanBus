@@ -265,7 +265,7 @@ uint8_t CanUtil::isExtendedFrame(uint8_t buffer){
 // returns: standard ID
 //****************************************************************
 uint16_t  CanUtil::whichStdID(uint8_t buffer){
-  uint8_t  stdid = 0;
+  uint16_t  stdid = 0;
   switch (buffer) {
   case 0:
     stdid = _can.read(RXB0SIDH) << 3;

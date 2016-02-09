@@ -180,7 +180,7 @@ void canCallback() {
 			canDataReceived[6],
 			canDataReceived[7]);
 
-	if(write(rcv_fd,rcv_buf,CAN_FIFO_MSG) == -1)
+	if(write(rcv_fd,rcv_buf,strlen(rcv_buf)) == -1)
 		error(1,errno,"Error writing to the receive-FIFO");
 }
 
