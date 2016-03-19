@@ -582,13 +582,13 @@ uint8_t CanUtil::isMessageAborted(uint8_t buffer){
 
 void CanUtil::flashRxbf(){
   _can.write(BFPCTRL, 0x3C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x0C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x3C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x0C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x00);  //RXnBF pins high Z
 }
 

@@ -21,19 +21,25 @@ void canCallback();
 	CanUtil canutil(can_dev);
 
 
-int main() {
+int main(int argc, char** argv) {
 	//wiringPiSetup();
 	MCP2510 can_dev(0);
 	CanUtil canutil(can_dev);
 
 	std::cout << "starting init_can()" << std::endl ;
+	canutil.flashRxbf();
 	init_can(canutil,can_dev);
 
 	/******************** end init, try sending shit**************/
-	std::cout << "finished init_can(), starting send_slave_ping()" << std::endl;
+	std::cout << "finished init_can()" << std::endl;
 	if(wiringPiISR(6,INT_EDGE_FALLING, canCallback) < 0)
 		perror("error setting up interrupt :( :");
-	send_slave_ping(canutil);
+	if(argc > 1) {
+		std::cout << "starting send_slave_ping()" << std::endl;
+		send_slave_ping(canutil);
+		std::cout << "sent" << std::endl;
+	}
+	canutil.flashRxbf();
 	pause();
 }
 
@@ -65,9 +71,9 @@ void init_can(CanUtil canutil,MCP2510 can_dev) {
 
 	// SETUP MASKS / FILTERS FOR CAN
 	canutil.setRxOperatingMode(1, 1, 0);  // standard ID messages only  and rollover
-	canutil.setAcceptanceFilter(0x102, 0, 0, 1); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 0
-	canutil.setAcceptanceFilter(0x101, 0, 0, 5); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 0
-	canutil.setAcceptanceFilter(0x100, 0, 0, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 1
+	//canutil.setAcceptanceFilter(0x102, 0, 0, 1); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 0
+	//canutil.setAcceptanceFilter(0x101, 0, 0, 5); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 0
+	canutil.setAcceptanceFilter(0x0000, 0, 0, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 1
 	canutil.setAcceptanceMask(0x000, 0x00000000, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, buffer# 0
 
 	canutil.setOpMode(0); // sets normal mode
@@ -84,7 +90,16 @@ void send_slave_ping(CanUtil canutil) {
 	message[0] = 0x01;
 
 	canutil.setTxBufferDataField(message, 0);   // fills TX buffer
-	canutil.messageTransmitRequest(0, 1, 3); // requests transmission of buffer 0 with highest priority*/
+	canutil.messageTransmitRequest(0, 1, 3); // requests transmission of buffer 0 with highest priority
+	int txstatus;
+	do {
+		txstatus = 0;
+		txstatus = canutil.isTxError(0);  // checks tx error
+		txstatus = txstatus + canutil.isArbitrationLoss(0);  // checks for arbitration loss
+		txstatus = txstatus + canutil.isMessageAborted(0);  // ckecks for message abort
+		txstatus = txstatus + canutil.isMessagePending(0);   // checks transmission
+	}
+	while (txstatus != 0);
 }
 
 void canCallback() {
