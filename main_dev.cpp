@@ -18,6 +18,13 @@
  */
 #define CAN_FIFO_MSG 44
 
+#ifdef DEBUG
+#include <iostream>
+#define DEBUG_(x, ...) fprintf(stderr,"\033[31m%s/%s/%d: " x "\033[0m\n",__FILE__,__func__,__LINE__,##__VA_ARGS__);
+#else
+#define DEBUG_(x, ...)
+#endif
+
 void init_can(CanUtil,MCP2510);
 void send_slave_ping(CanUtil);
 void canCallback();
@@ -40,48 +47,39 @@ int rcv_fd, snd_fd;
 
 int main(int argc, char** argv) {
 
-#ifdef DEBUG
-	printf("Setting up CAN handler process.\n");
-#endif
+	DEBUG_("Setting up CAN handler process.\n");
 
 	if(argc < 3) 
 		error(1,errno,"Not enough arguments for CAN handler process. Aborting.");
 
-#ifdef DEBUG
-	printf("argv[1]: %s\nargv[2]: %s\n",argv[1],argv[2]);
-#endif
+	DEBUG_("argv[1]: %s\nargv[2]: %s\n",argv[1],argv[2]);
 
 	if((rcv_fd = open(argv[1],O_WRONLY)) ==-1)
 		error(1,errno,"Couldn't open the receive-FIFO");
-#ifdef DEBUG
-	printf("Opened receive-FIFO\n");
-#endif
+	DEBUG_("Opened receive-FIFO\n");
 	if((snd_fd = open(argv[2],O_RDONLY)) == -1)
 		error(1,errno,"Couldn't open the send-FIFO");
 
 
-#ifdef DEBUG
-	printf("Finished opening file descriptors, starting init_can()\n");
-#endif
+	DEBUG_("Finished opening file descriptors, starting init_can()\n");
 	init_can(canutil,can_dev);
 
-#ifdef DEBUG
-	printf("CAN init finished.\n");
-#endif
+	DEBUG_("CAN init finished.\n");
 
 	if(wiringPiISR(6,INT_EDGE_FALLING, canCallback) < 0) {
 		printf("Error binding\n");
 		return 1;
 	}
-//		error(1,errno,"Error binding interrupt.");
+	//		error(1,errno,"Error binding interrupt.");
+	can_dev.write(CANINTF, 0x00);  // Clears all interrupts flags
 
 	uint8_t data_to_send[8];
 	char snd_buf[CAN_FIFO_MSG];
 	memset(snd_buf,0,CAN_FIFO_MSG);
 
-#ifdef DEBUG
-	printf("Finished config, about to loop.\n");
-#endif
+	DEBUG_("blinking led !");
+	canutil.flashRxbf();
+	DEBUG_("Finished config, about to loop.\n");
 	while( readline(snd_fd,snd_buf,CAN_FIFO_MSG) != -1 ) {
 		// TODO parse the line to get stdid/extid/data
 	}
@@ -100,13 +98,9 @@ void init_can(CanUtil canutil,MCP2510 can_dev) {
 	// IMPORTANT NOTE: configuration mode is the ONLY mode where bit timing registers (CNF1, CNF2, CNF3), acceptance
 	// filters and acceptance masks can be modified
 
-#ifdef DEBUG
-	printf("Starting to wait for opmode\n");
-#endif
+	DEBUG_("Starting to wait for opmode\n");
 	canutil.waitOpMode(4);  // waits configuration mode
-#ifdef DEBUG
-	printf("Opmode received.\n");
-#endif
+	DEBUG_("Opmode received.\n");
 
 	// Bit timing section
 	//  setting the bit timing registers with Fosc = 16MHz -> Tosc = 62,5ns
@@ -121,10 +115,10 @@ void init_can(CanUtil canutil,MCP2510 can_dev) {
 
 	// SETUP MASKS / FILTERS FOR CAN
 	canutil.setRxOperatingMode(2, 1, 0);  // ext ID messages only  and rollover
-	canutil.setAcceptanceFilter(0x000, 0, 1, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 0
-	//canutil.setAcceptanceMask(0x000, 0x20000, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, buffer# 0
-	canutil.setAcceptanceMask(0x000, 0x00000, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, buffer# 0
-	
+	canutil.setAcceptanceFilter(0x000, 0x20000, 1, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, 1 = extended, filter# 0
+	canutil.setAcceptanceMask(0x000, 0x20000, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, buffer# 0
+	//canutil.setAcceptanceMask(0x000, 0x00000, 0); // 0 <= stdID <= 2047, 0 <= extID <= 262143, buffer# 0
+
 	canutil.setOpMode(0); // sets normal mode
 	//  opmode = canutil.whichOpMode();
 
@@ -133,9 +127,7 @@ void init_can(CanUtil canutil,MCP2510 can_dev) {
 }
 
 void canCallback() {
-#ifdef DEBUG
-	printf("Callback called !\n");
-#endif
+	DEBUG_("Callback called !\n");
 	if(pthread_mutex_lock(&spilock) == -1)
 		perror("Error lock SPI mutex: ");
 
@@ -145,9 +137,7 @@ void canCallback() {
 	uint8_t recSize = canutil.whichRxDataLength(0); 
 	for (uint8_t i = 0; i < recSize; i++) { // gets the bytes
 		canDataReceived[i] = canutil.receivedDataValue(0, i);
-#ifdef DEBUG
-		printf("Data number %d: %c\n",i,canDataReceived[i]);
-#endif
+		DEBUG_("Data number %d: %c\n",i,canDataReceived[i]);
 	}
 
 	for( uint8_t i = recSize; i < 8; i++) {
@@ -156,18 +146,15 @@ void canCallback() {
 
 	uint16_t stdId = canutil.whichStdID(0);
 	uint32_t extId = canutil.whichExtdID(0);
-#ifdef DEBUG
-	std::cout << "Message ID: " << stdId << std::endl;
+
 	can_dev.write(CANINTF, 0x00);  // Clears all interrupts flags
-#endif
+
 	if(pthread_mutex_unlock(&spilock) == -1)
 		perror("Error unlocking SPI mutex: ");
 
 	char rcv_buf[CAN_FIFO_MSG];
 	memset(rcv_buf,0,CAN_FIFO_MSG);
-#ifdef DEBUG
-	printf("About to send received data into receive-FIFO.\n");
-#endif
+	DEBUG_("About to send received data into receive-FIFO.\n");
 	snprintf(rcv_buf,CAN_FIFO_MSG,"%hu;%u;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu\n",
 			stdId,
 			extId,
@@ -180,7 +167,7 @@ void canCallback() {
 			canDataReceived[6],
 			canDataReceived[7]);
 
-	if(write(rcv_fd,rcv_buf,CAN_FIFO_MSG) == -1)
+	if(write(rcv_fd,rcv_buf,strlen(rcv_buf)) == -1)
 		error(1,errno,"Error writing to the receive-FIFO");
 }
 

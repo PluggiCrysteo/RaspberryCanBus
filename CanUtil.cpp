@@ -146,7 +146,7 @@ void CanUtil::setAcceptanceFilter(uint16_t stdID, uint32_t extID, uint8_t extend
   extended = extended <<3 & 0x08;
   sidl = (int8_t) stdID << 5 & 0b11100000;
   sidl = sidl | extended;
-  sidl  = sidl | (int8_t)extID >> 16;
+  sidl  = sidl | (int8_t)(extID >> 16);
   eid0 = (int8_t)extID;
   eid8 = (int8_t)extID >>8;
   switch (filter) {
@@ -265,7 +265,7 @@ uint8_t CanUtil::isExtendedFrame(uint8_t buffer){
 // returns: standard ID
 //****************************************************************
 uint16_t  CanUtil::whichStdID(uint8_t buffer){
-  uint8_t  stdid = 0;
+  uint16_t  stdid = 0;
   switch (buffer) {
   case 0:
     stdid = _can.read(RXB0SIDH) << 3;
@@ -582,13 +582,13 @@ uint8_t CanUtil::isMessageAborted(uint8_t buffer){
 
 void CanUtil::flashRxbf(){
   _can.write(BFPCTRL, 0x3C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x0C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x3C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x0C);
-  sleep(100);
+  sleep(1);
   _can.write(BFPCTRL, 0x00);  //RXnBF pins high Z
 }
 
