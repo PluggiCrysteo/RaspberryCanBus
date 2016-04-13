@@ -1,8 +1,4 @@
-// B.Stefanelli le 26 Oct 2011
-
-
 #include "CanUtil.h"
-
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -582,13 +578,12 @@ uint8_t CanUtil::isMessageAborted(uint8_t buffer){
 
 void CanUtil::flashRxbf(){
   _can.write(BFPCTRL, 0x3C);
-  sleep(1);
+  sleep(100);
   _can.write(BFPCTRL, 0x0C);
-  sleep(1);
+  sleep(100);
   _can.write(BFPCTRL, 0x3C);
-  sleep(1);
+  sleep(100);
   _can.write(BFPCTRL, 0x0C);
-  sleep(1);
+  sleep(100);
   _can.write(BFPCTRL, 0x00);  //RXnBF pins high Z
 }
-
