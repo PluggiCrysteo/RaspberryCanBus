@@ -82,9 +82,6 @@ void MCP2510::bitModify(uint8_t reg, uint8_t mask, uint8_t data) {
 
   ---------------------------------------------------------------------------------*/
 uint8_t MCP2510::readStatus() {
-
-	uint8_t order[1] = { 0xa0 };  
-
 	uint8_t receivedData[3] = { 0xa0,0xFF, 0xFF }; 
 	wiringPiSPIDataRW(_csPin,receivedData,3);
 	// Disable slave
