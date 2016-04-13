@@ -3,7 +3,7 @@
 
 #include <inttypes.h>
 
-#define SPI_CLOCK_SPEED 1000000
+#define SPI_CLOCK_SPEED 2000000
 
 #define RXF0SIDH	0x00
 #define RXF0SIDL 	0x01
