@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
   cfd = accept(sfd, NULL, NULL);
 
-  DEBUG_("Finished opening file descriptors, starting init_can()\n");
+  DEBUG_("Received connection on UNIX socket, starting init_can()\n");
   init_can(canutil,can_dev);
 
   DEBUG_("CAN init finished.\n");
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
     //send_can_msg(snd_buf,canutil);
   }
 
-  error(1,errno,"Error reading the send-FIFO.");
+  error(1,errno,"Error reading the client socket.");
 }
 
 void init_can(CanUtil canutil,MCP2510 can_dev) {
@@ -150,7 +150,7 @@ void canCallback() {
 
   char rcv_buf[CAN_FIFO_RCV_BUFSIZE];
   memset(rcv_buf,0,CAN_FIFO_RCV_BUFSIZE);
-  DEBUG_("About to send received data into receive-FIFO.\n");
+  DEBUG_("About to send received data to the client fd.\n");
   snprintf(rcv_buf,CAN_FIFO_RCV_BUFSIZE,"%hu;%u;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu\n",
            stdId,
            extId,
