@@ -7,6 +7,8 @@
 #include <sys/un.h>
 #include <error.h>
 
+#include "debug.h"
+
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
 	std::stringstream ss(s);
 	std::string item;
