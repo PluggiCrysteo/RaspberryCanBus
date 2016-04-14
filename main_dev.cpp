@@ -34,7 +34,7 @@
 
 void init_can(CanUtil,MCP2510);
 void canCallback();
-void send_can_msg(int,char*,CanUtil); 
+void send_can_msg(char*,CanUtil); 
 
 /**
  *	INTERRUPT PIN : 6 VIA WIRINGPI
@@ -45,24 +45,23 @@ void send_can_msg(int,char*,CanUtil);
 MCP2510 can_dev(0);
 CanUtil canutil(can_dev);
 pthread_mutex_t spilock = PTHREAD_MUTEX_INITIALIZER;
-int rcv_fd, snd_fd;
+int sfd;
 
 
 int main(int argc, char** argv) {
 
   DEBUG_("Setting up CAN handler process.\n");
 
-  if(argc < 3) 
+  if(argc < 2) 
     error(1,errno,"Not enough arguments for CAN handler process. Aborting.");
 
-  DEBUG_("argv[1]: %s\nargv[2]: %s\n",argv[1],argv[2]);
+  DEBUG_("argv[1]: %s\n",argv[1]);
 
-  if((rcv_fd = open(argv[1],O_WRONLY)) ==-1)
-    error(1,errno,"Couldn't open the receive-FIFO");
-  DEBUG_("Opened receive-FIFO\n");
-  if((snd_fd = open(argv[2],O_RDONLY)) == -1)
-    error(1,errno,"Couldn't open the send-FIFO");
+  sfd = get_unix_socket_fd(argv[1]);
 
+  DEBUG_("Polling for accept");
+
+  int cfd = accept(sfd, NULL, NULL);
 
   DEBUG_("Finished opening file descriptors, starting init_can()\n");
   init_can(canutil,can_dev);
@@ -82,8 +81,8 @@ int main(int argc, char** argv) {
   DEBUG_("blinking led !");
   canutil.flashRxbf();
   DEBUG_("Finished config, about to loop.\n");
-  while( readline(snd_fd,snd_buf,CAN_FIFO_SND_BUFSIZE) != -1 ) {
-    //send_can_msg(snd_fd,snd_buf,canutil);
+  while( readline(cfd,snd_buf,CAN_FIFO_SND_BUFSIZE) != -1 ) {
+    //send_can_msg(snd_buf,canutil);
   }
 
   error(1,errno,"Error reading the send-FIFO.");
@@ -128,7 +127,6 @@ void canCallback() {
   if(pthread_mutex_lock(&spilock) == -1)
     perror("Error lock SPI mutex: ");
 
-
   uint8_t canDataReceived[8];
 
   uint8_t recSize = canutil.whichRxDataLength(0); 
@@ -164,13 +162,13 @@ void canCallback() {
            canDataReceived[6],
            canDataReceived[7]);
 
-  if(write(rcv_fd,rcv_buf,strlen(rcv_buf)) == -1)
+  if(write(sfd,rcv_buf,strlen(rcv_buf)) == -1)
     error(1,errno,"Error writing to the receive-FIFO");
 }
 
 
 
-void send_can_msg(int fd, char* buf, CanUtil canutil) {
+void send_can_msg(char* buf, CanUtil canutil) {
   std::string tosplit(buf);
   std::vector<std::string> splitted = split(tosplit,';');
 
