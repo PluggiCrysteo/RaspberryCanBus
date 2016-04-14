@@ -45,7 +45,7 @@ void send_can_msg(char*,CanUtil);
 MCP2510 can_dev(0);
 CanUtil canutil(can_dev);
 pthread_mutex_t spilock = PTHREAD_MUTEX_INITIALIZER;
-int sfd;
+int cfd;
 
 
 int main(int argc, char** argv) {
@@ -57,11 +57,11 @@ int main(int argc, char** argv) {
 
   DEBUG_("argv[1]: %s\n",argv[1]);
 
-  sfd = get_unix_socket_fd(argv[1]);
+  int sfd = get_unix_socket_fd(argv[1]);
 
   DEBUG_("Polling for accept");
 
-  int cfd = accept(sfd, NULL, NULL);
+  cfd = accept(sfd, NULL, NULL);
 
   DEBUG_("Finished opening file descriptors, starting init_can()\n");
   init_can(canutil,can_dev);
@@ -127,9 +127,10 @@ void canCallback() {
   if(pthread_mutex_lock(&spilock) == -1)
     perror("Error lock SPI mutex: ");
 
-  uint8_t canDataReceived[8];
+  static uint8_t canDataReceived[8];
 
-  uint8_t recSize = canutil.whichRxDataLength(0); 
+  static uint8_t recSize = canutil.whichRxDataLength(0); 
+
   for (uint8_t i = 0; i < recSize; i++) { // gets the bytes
     canDataReceived[i] = canutil.receivedDataValue(0, i);
     DEBUG_("Data number %d: %c\n",i,canDataReceived[i]);
@@ -139,15 +140,15 @@ void canCallback() {
     canDataReceived[i] = 0;
   }
 
-  uint16_t stdId = canutil.whichStdID(0);
-  uint32_t extId = canutil.whichExtdID(0);
+  static uint16_t stdId = canutil.whichStdID(0);
+  static uint32_t extId = canutil.whichExtdID(0);
 
   can_dev.write(CANINTF, 0x00);  // Clears all interrupts flags
 
   if(pthread_mutex_unlock(&spilock) == -1)
     perror("Error unlocking SPI mutex: ");
 
-  char rcv_buf[CAN_FIFO_RCV_BUFSIZE];
+  static char rcv_buf[CAN_FIFO_RCV_BUFSIZE];
   memset(rcv_buf,0,CAN_FIFO_RCV_BUFSIZE);
   DEBUG_("About to send received data into receive-FIFO.\n");
   snprintf(rcv_buf,CAN_FIFO_RCV_BUFSIZE,"%hu;%u;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu;%hhu\n",
@@ -162,7 +163,7 @@ void canCallback() {
            canDataReceived[6],
            canDataReceived[7]);
 
-  if(write(sfd,rcv_buf,strlen(rcv_buf)) == -1)
+  if(write(cfd,rcv_buf,strlen(rcv_buf)) == -1)
     error(1,errno,"Error writing to the receive-FIFO");
 }
 
